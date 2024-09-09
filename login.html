@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion / Inscription</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+        }
+        
+        .form-box {
+            background-color: #fff;
+            padding: 40px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .input-group label {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        
+        .alt-action {
+            margin-top: 15px;
+        }
+        
+        .alt-action a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        
+        .alt-action a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="form-box">
+            <h2 id="form-title">Connexion</h2>
+            
+            <!-- Formulaire de Connexion--> 
+            <div id="login-form">
+                <div class="input-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" class="btn" id="loginButton">Se connecter</button>
+            </div>
+            
+            <!-- Formulaire d'Inscription -->
+            <div id="register-form" style="display: none;">
+                <div class="input-group">
+                    <label for="name">Nom complet</label>
+                    <input type="text" id="register-name" name="name" required>
+                </div>
+                <div class="input-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" name="email" required>
+                </div>
+                <div class="input-group">
+                    <label for="register-password">Mot de passe</label>
+                    <input type="password" id="register-password" name="password" required>
+                </div>
+                <button type="submit" class="btn" id="registerButton">S'inscrire</button>
+            </div>
+            
+            <div id="responseDiv"></div>
+            
+            <!-- Boutons de bascule -->
+            <p class="alt-action">
+                <span id="switch-to-register">Pas encore inscrit ? <a href="#">Créer un compte</a></span>
+                <span id="switch-to-login" style="display: none;">Déjà inscrit ? <a href="#">Se connecter</a></span>
+            </p>
+        </div>
+    </div>
+    <!--Script de changement de formulaire-->
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const switchToRegister = document.getElementById('switch-to-register');
+        const switchToLogin = document.getElementById('switch-to-login');
+        const formTitle = document.getElementById('form-title');
+        
+        switchToRegister.addEventListener('click', function() {
+            loginForm.style.display = 'none';
+            registerForm.style.display = 'block';
+            switchToRegister.style.display = 'none';
+            switchToLogin.style.display = 'inline';
+            formTitle.textContent = 'Inscription';
+        });
+        
+        switchToLogin.addEventListener('click', function() {
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+            switchToRegister.style.display = 'inline';
+            switchToLogin.style.display = 'none';
+            formTitle.textContent = 'Connexion';
+        });
+    </script>
+    <!--Script d'envoi à l'API-->
+    <script>
+        const loginButton = document.getElementById('loginButton');
+        const registerButton = document.getElementById('registerButton');
+        
+        registerButton.addEventListener('click', function() {
+            const nameInput = document.getElementById('register-name');
+            const mailInput = document.getElementById('register-email');
+            const passwordInput = document.getElementById('register-password');
+            
+            var name = nameInput.value; 
+            var mail = mailInput.value;
+            var password = passwordInput.value;
+            
+            nameInput.value = '';
+            mailInput.value = '';
+            passwordInput.value = '';
+            
+            try {
+                const response = fetch(`http://192.168.64.162:3000/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, mail, password })
+                });
+                if(!response.token) {
+                    console.log(`Erreur lors de la requete d'inscription`);
+                }
+                
+                document.getElementById('responseDiv').innerHTML = response.message;
+                
+                document.cookie = `UserToken=${encodeURIComponent(response.token)}; max-age=${(7 * 24 * 60 * 60)}`;
+                window.location.href = 'http://192.168.64.162/CIEL2-TP1/index.html';
+                console.log("inscription réussie");
+                
+            } catch(err) {
+                console.log(`Erreur lors de l'inscription\nErreur:\n`, err);
+            }
+        })
+        
+        loginButton.addEventListener('click', function() {
+            const emailInput = document.getElementById('login-email');
+            const passwordInput = document.getElementById('login-password');
+            
+            var email = emailInput.value;
+            var password = passwordInput.value;
+            
+            emailInput.value = '';
+            passwordInput.value = '';
+            
+            try {
+                const response = fetch(`http://192.168.64.162:3000/login`, {
+                    method : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                if(!response.token) {
+                    console.log(`Erreur lors de la requete d'inscription`);
+                }
+                
+                document.getElementById('responseDiv').innerHTML = response.message;
+                
+                document.cookie = `UserToken=${encodeURIComponent(response.token)}; max-age=${(7 * 24 * 60 * 60)}`;
+                window.location.href = 'http://192.168.64.162/CIEL2-TP1/index.html';
+                console.log("Connexion réussie");
+        } catch(err) {
+            console.log(`Erreur lors de l'envoi de la requête de connexion !\nErreur :\n`, err);
+        }
+    })
+</script>
+</body>
+</html>
