@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connecté</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        body {
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Connecté</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+        <style>
+            body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -60,7 +60,13 @@
             padding: 20px;
             text-align: center;
         }
-    </style>
+        
+        #error {
+            color: red;
+            font-size: larger;
+        }
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
 <body>
     <div class="navbar">
@@ -75,15 +81,17 @@
         <h1>Bienvenue sur notre site</h1>
     </div>
     <div class="content" id="error">
-
+        
     </div>
     
-    <script>
+    <script>       
         document.getElementById('logoutButton').addEventListener('click', function() {
-
-            
             try {
-                const response = fetch(`http://192.168.64.162:3000/login`, {
+                token = Cookies.get('userToken');
+                console.log('cookie : ', document.cookie)
+                if(token == null) return document.getElementById('error').innerHTML = 'Erreur lors de la déconnexionA';
+                
+                const response = fetch(`http://192.168.64.162:3000/disconnect`, {
                     method : 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -95,14 +103,15 @@
                     const result = response.json();
                     
                     if(result.ok) {
-                        document.cookie = `UserToken=""`;
-                        window.location.href = 'login.html';
+                        document.cookie = `userToken=""`;
+                        window.location.href = `${window.location.href}`;
                     } else {
-                        document.getElementById('')
+                        document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
                     }
                 }
             } catch(err) {
                 console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, err);
+                document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
             }
         });
     </script>
