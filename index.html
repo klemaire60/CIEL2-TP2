@@ -87,27 +87,16 @@
     <script>       
         document.getElementById('logoutButton').addEventListener('click', function() {
             try {
-                token = Cookies.get('userToken');
-                console.log('cookie : ', document.cookie)
-                if(token == null) return document.getElementById('error').innerHTML = 'Erreur lors de la déconnexionA';
-                
                 const response = fetch(`http://192.168.64.162:3000/disconnect`, {
-                    method : 'POST',
+                    method : 'GET',
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ token })
+                    }
                 });
                 if(response.ok) {
-                    
-                    const result = response.json();
-                    
-                    if(result.ok) {
-                        document.cookie = `userToken=""`;
-                        window.location.href = `${window.location.href}`;
-                    } else {
-                        document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
-                    }
+                    window.location.href = `${window.location.href}`;
+                } else {
+                    document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
                 }
             } catch(err) {
                 console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, err);

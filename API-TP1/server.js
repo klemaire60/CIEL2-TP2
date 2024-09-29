@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 
 // Récupération des paramètres de la base de données
 const connection = require('./db');
+const { ok } = require('assert');
 
 // App principale
 const app = express();
@@ -69,7 +70,7 @@ app.post('/register', (req, res) => {
         }
 
         if (result.length > 0) {
-            return res.status(409).json({ message: "Mail déjà utilisé" });
+            return res.status(401).json({ message: "Mail déjà utilisé" });
         }
         bcrypt.genSalt(10, (err, salt) => {
             if (err) {
@@ -92,12 +93,14 @@ app.post('/register', (req, res) => {
                         console.error("Erreur lors de la création du nouvel User\nErreur sql :\n", sqlErr);
                         return res.status(500).json({ message: "Erreur lors de la création du compte" });
                     }
-                    return res.status(200).json(
-                        {
-                            message: "Compte créé avec succès",
-                            token: token
-                        }
-                    );
+
+                    res.cookie('userToken', token, {
+                        httpOnly: false,
+                        secure: false,
+                        maxAge: 43200000
+                    });
+
+                    return res.status(200).json({ message: "Compte créé avec succès" });
                 });
             });
         });
@@ -134,7 +137,7 @@ app.post('/login', (req, res) => {
         }
 
         if (result.length === 0) {
-            return res.status(409).json({ message: "Mail inconnu" });
+            return res.status(401).json({ message: "Mail inconnu" });
         }
 
         const isPasswordValid = bcrypt.compareSync(password, result[0].password);
@@ -149,19 +152,22 @@ app.post('/login', (req, res) => {
                     return res.status(500).json({ message: "Erreur lors de la création du token" });
                 }
 
-                res.cookie('userToken', token, { httpOnly: false });
-                return res.status(200).json({ ok : "ok"})
+                res.cookie('userToken', token, { 
+                    httpOnly: false,
+                    secure: false,
+                    maxAge: 43200000
+                });
+                return res.status(200);
             });
         } else {
-            return res.status(409).json({ message: "Mot de passe incorrect" });
+            return res.status(401).json({ message: "Mot de passe incorrect" });
         }
     });
 });
 
-
 // Route de déconnexion via l'API
-app.post('/disconnect', (req, res) => {
-    const { token } = req.body;
+app.get('/disconnect', (req, res) => {
+    const token = req.cookies.userToken;
 
     if (containsInvalidChars(token)) {
         return res.status(400).json({ message: 'le token contient des caractères invalides' });
@@ -176,7 +182,8 @@ app.post('/disconnect', (req, res) => {
             console.error("Erreur lors de la requête de déconnexion\n Erreur sql:\n", err);
             return res.status(500).json({ message: "Erreur lors de la déconnexion" });
         }
-        return res.status(200).json({ message: "Utilisateur déconnecté", ok: "true" });
+        res.clearCookie('userToken');
+        return res.status(200).json({ message: "Utilisateur déconnecté" });
     });
 });
 
@@ -203,6 +210,7 @@ app.get('/index.html', authenticate, (req, res) => {
 
 // Route par défaut pour envoyer la page de connexion
 app.get('/', (req, res) => {
+    if(req.cookies.userToken) return res.redirect('/index.html');
     res.sendFile(path.join(__dirname, '../login.html'));
 });
 
