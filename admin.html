@@ -108,7 +108,7 @@
     <script>
         async function fetchUserList() {
             try {
-                const response = await fetch('http://localhost:3000/getUserList', {
+                const response = await fetch('http://192.168.64.162:3000/getUserList', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
@@ -154,7 +154,7 @@
             const newPassword = prompt("Entrez le nouveau mot de passe :");
             if (newPassword) {
                 try {
-                    const response = await fetch('http://localhost:3000/modifyPassword', {
+                    const response = await fetch('http://192.168.64.162:3000/modifyPassword', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -179,7 +179,7 @@
             const confirmDelete = confirm("Êtes-vous sûr de vouloir supprimer ce compte ?");
             if (confirmDelete) {
                 try {
-                    const response = await fetch('http://localhost:3000/deleteAccount', {
+                    const response = await fetch('http://192.168.64.162:3000/deleteAccount', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
