@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Connecté</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-        <style>
-            body {
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connecté</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -65,8 +65,8 @@
             color: red;
             font-size: larger;
         }
-        </style>
-        <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
 <body>
     <div class="navbar">
@@ -85,24 +85,29 @@
     </div>
     
     <script>       
-        document.getElementById('logoutButton').addEventListener('click', function() {
+        document.getElementById('logoutButton').addEventListener('click', async function() {
             try {
-                const response = fetch(`http://192.168.64.162:3000/disconnect`, {
-                    method : 'GET',
+                const response = await fetch(`http://192.168.64.162:3000/disconnect`, {
+                    method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    credentials: 'include' // Assurez-vous que les cookies sont envoyés avec la requête
                 });
-                if(response.ok) {
-                    window.location.href = `${window.location.href}`;
+                
+                if (response.ok) {
+                    window.location.href = `http://192.168.64.162:3000/login.html`; // Redirige vers la page de connexion
                 } else {
+                    const errorData = await response.json();
+                    console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, errorData.message);
                     document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
                 }
-            } catch(err) {
+            } catch (err) {
                 console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, err);
                 document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
             }
         });
+        
     </script>
 </body>
 </html>

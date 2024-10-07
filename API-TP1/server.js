@@ -85,7 +85,7 @@ app.post('/register', (req, res) => {
                 
                 let token = jwt.sign({ mail }, jwtKey);
                 
-                const sqlNewUser = `INSERT INTO User (mail, username, password, token, isAdmin) VALUES (?, ?, ?, ?, 'true')`;
+                const sqlNewUser = `INSERT INTO User (mail, username, password, token) VALUES (?, ?, ?, ?, 'true')`;
                 
                 connection.query(sqlNewUser, [mail, name, hashedPassword, token], (sqlErr) => {
                     if (sqlErr) {
@@ -151,12 +151,12 @@ app.post('/login', (req, res) => {
                     return res.status(500).json({ message: "Erreur lors de la création du token" });
                 }
                 
-                res.cookie('userToken', token, { 
+                res.cookie('userToken', token, {
                     httpOnly: false,
                     secure: false,
                     maxAge: 43200000
                 });
-                return res.status(200);
+                return res.status(200).json({ message: "Connexion réussie" });
             });
         } else {
             return res.status(401).json({ message: "Mot de passe incorrect" });
@@ -165,24 +165,24 @@ app.post('/login', (req, res) => {
 });
 
 // Route de déconnexion via l'API
+
 app.get('/disconnect', (req, res) => {
     const token = req.cookies.userToken;
-    
+
     if (containsInvalidChars(token)) {
-        return res.status(400).json({ message: 'le token contient des caractères invalides' });
+        return res.status(400).json({ message: 'Le token contient des caractères invalides' });
     }
-    
+
     if (!token) return res.status(400).json({ message: "Le token du User est requis pour la déconnexion" });
-    
+
     const sqlDisconnect = 'UPDATE User SET token = NULL WHERE token = ?';
-    
+
     connection.query(sqlDisconnect, [token], (err) => {
         if (err) {
-            console.error("Erreur lors de la requête de déconnexion\n Erreur sql:\n", err);
+            console.error("Erreur lors de la requête de déconnexion\nErreur sql:\n", err);
             return res.status(500).json({ message: "Erreur lors de la déconnexion" });
         }
-        res.clearCookie('userToken');
-        return res.status(200).json({ message: "Utilisateur déconnecté" });
+        return res.clearCookie('userToken');
     });
 });
 
@@ -288,6 +288,8 @@ app.get('/index.html', authenticate, (req, res) => {
 });
 
 app.get('/admin.html', (req, res) => {
+    return res.status(401).json({ message: "Vous n'êtes pas autorisé à accéder à la page admin" }).sendFile(path.join(__dirname, '../index.html'));
+
     const token = req.cookies.userToken;
     
     const sqlAdmin = 'SELECT isAdmin FROM User WHERE token = ?';
