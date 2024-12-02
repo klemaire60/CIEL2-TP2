@@ -3,111 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connecté</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <title>Simulation GPS avec OpenStreetMap</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-        }
-        .navbar {
-            background-color: #333;
-            overflow: hidden;
-            padding: 20px 0; /* Ajoute de la hauteur à la barre de navigation */
+            background-color: whitesmoke;
+            color: #ffffff;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
         }
-        .navbar a {
-            float: left;
-            display: block;
-            color: white;
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
             text-align: center;
-            padding: 14px 20px;
-            text-decoration: none;
         }
-        .navbar a:hover {
-            background-color: #ddd;
-            color: black;
+
+        .navbar h1 {
+            font-size: 2em;
+            margin: 0;
+            font-weight: 700;
+            color: lightskyblue;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
         }
-        .sign-out-wrapper {
-            margin-left: auto; /* Pousse le bouton à droite */
-            margin-right: 1em; /* Ajoute une marge droite pour décaler légèrement le bouton */
-        }
-        .sign-out {
-            color: black;
-            outline: none;
-            text-decoration: none;
-            transition: all 0.1s;
-            display: inline-flex;
-            align-items: center;
-            padding: 0.5em 1em;
-            border: 1px solid black;
-            border-radius: 4px;
-        }
-        .sign-out:focus,
-        .sign-out:hover,
-        .sign-out:active {
-            color: white;
-            background-color: grey;
-            text-decoration: none;
-        }
-        .sign-out > span {
-            margin: 0.1em;
-        }
+
         .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
-            text-align: center;
         }
-        
-        #error {
-            color: red;
-            font-size: larger;
+
+        #map {
+            height: 70vh;
+            width: 80%;
+            max-width: 1200px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            #map {
+                height: 50vh;
+                width: 90%;
+            }
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/js-cookie@3.0.1/dist/js.cookie.min.js"></script>
 </head>
 <body>
     <div class="navbar">
-        <div class="sign-out-wrapper clearfix">
-            <a href="#" id='logoutButton' class="sign-out pull-right">
-                <span>Sign Out</span>
-                <i class="fa fa-sign-out"></i>
-            </a>
-        </div>
+        <h1>Position GPS des bateaux</h1>
     </div>
     <div class="content">
-        <h1>Bienvenue sur notre site</h1>
+        <div id="map"></div>
     </div>
-    <div class="content" id="error">
-        
-    </div>
-    
-    <script>       
-        document.getElementById('logoutButton').addEventListener('click', async function() {
+
+    <script>
+        let map;
+        let marker;
+
+        // Fonction pour récupérer la dernière trame GPS depuis le backend
+        async function fetchGPSData() {
             try {
-                const response = await fetch(`http://192.168.64.162:3000/disconnect`, {
+                const response = await fetch('http://192.168.64.184:3000/gps/latest', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    credentials: 'include' // Assurez-vous que les cookies sont envoyés avec la requête
+                    }
                 });
-                
-                if (response.ok) {
-                    window.location.href = `http://192.168.64.162:3000/login.html`; // Redirige vers la page de connexion
-                } else {
-                    const errorData = await response.json();
-                    console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, errorData.message);
-                    document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+
+                const data = await response.json();
+
+                // Vérifie que les données contiennent latitude, longitude et timestamp
+                if (data && data.latitude && data.longitude && data.timestamp) {
+                    return data;
+                } else {
+                    throw new Error("Données GPS non valides.");
+                }
+
             } catch (err) {
-                console.log(`Erreur lors de l'envoi de la requête de déconnexion !\nErreur :\n`, err);
-                document.getElementById('error').innerHTML = 'Erreur lors de la déconnexion';
+                console.error('Erreur lors de la récupération des données GPS:', err);
+                return null; // Si une erreur se produit, retourne null
             }
-        });
-        
+        }
+
+        // Met à jour le marqueur avec les nouvelles coordonnées GPS
+        async function updateMarker() {
+            const gpsData = await fetchGPSData();
+
+            if (gpsData) {
+                const { latitude, longitude, timestamp } = gpsData;
+
+                // Met à jour la position du marqueur
+                marker.setLatLng([latitude, longitude])
+                    .bindPopup(`<b>Position actuelle:</b><br>Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}<br>Timestamp: ${timestamp}`)
+                    .openPopup();
+
+                // Recentre la carte sur le marqueur
+                map.setView([latitude, longitude]);
+            }
+        }
+
+        // Initialisation de la carte et du marqueur
+        function initMap() {
+            map = L.map('map').setView([48.8566, 2.3522], 13); // Paris par défaut
+
+            // Ajouter les tuiles OpenStreetMap
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Ajouter un marqueur par défaut
+            marker = L.marker([48.8566, 2.3522]).addTo(map)
+                .bindPopup('Chargement des données...')
+                .openPopup();
+        }
+
+        // Charger la carte et commencer les mises à jour
+        window.onload = () => {
+            initMap();
+
+            // Met à jour la position toutes les 2 secondes
+            setInterval(updateMarker, 2000);
+        };
     </script>
 </body>
 </html>
