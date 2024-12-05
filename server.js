@@ -15,7 +15,7 @@ app.use(express.static('/var/www/html/CIEL2-TP2'));
 
 // Route pour récupérer les trames GPS depuis la base de données
 app.get('/api/gps', (req, res) => {
-  const query = 'SELECT latitude, longitude, timestamp FROM gps_data ORDER BY timestamp DESC LIMIT 1';
+  const query = 'SELECT id, latitude, longitude FROM gps ORDER BY id DESC LIMIT 1';
 
   connection.query(query, (err, results) => {
     if (err) {
@@ -26,9 +26,9 @@ app.get('/api/gps', (req, res) => {
 
     if (results.length > 0) {
       const gpsData = {
+        id: results[0].id,
         latitude: results[0].latitude,
         longitude: results[0].longitude,
-        timestamp: results[0].timestamp
       };
       res.json(gpsData);
     } else {
@@ -37,7 +37,6 @@ app.get('/api/gps', (req, res) => {
   });
 });
 
-// Lancer le serveur
 app.listen(port, () => {
   console.log(`Serveur Node.js lancé sur http://192.168.64.184:${port}`);
 });

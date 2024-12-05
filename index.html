@@ -71,45 +71,30 @@
         let map;
         let marker;
 
-        // Fonction pour récupérer la dernière trame GPS depuis le backend
+        // Fonction pour récupérer les données GPS depuis le serveur
         async function fetchGPSData() {
             try {
-                const response = await fetch('http://192.168.64.184:3000/gps/latest', {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-
+                const response = await fetch('/api/gps');
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error('Erreur lors de la récupération des données GPS');
                 }
-
-                const data = await response.json();
-
-                // Vérifie que les données contiennent latitude, longitude et timestamp
-                if (data && data.latitude && data.longitude && data.timestamp) {
-                    return data;
-                } else {
-                    throw new Error("Données GPS non valides.");
-                }
-
-            } catch (err) {
-                console.error('Erreur lors de la récupération des données GPS:', err);
-                return null; // Si une erreur se produit, retourne null
+                return await response.json();
+            } catch (error) {
+                console.error(error);
+                return null;
             }
         }
 
-        // Met à jour le marqueur avec les nouvelles coordonnées GPS
+        // Fonction pour mettre à jour le marqueur avec les nouvelles coordonnées GPS
         async function updateMarker() {
             const gpsData = await fetchGPSData();
 
             if (gpsData) {
-                const { latitude, longitude, timestamp } = gpsData;
+                const { id, latitude, longitude } = gpsData;
 
-                // Met à jour la position du marqueur
+                // Met à jour la position et le popup du marqueur
                 marker.setLatLng([latitude, longitude])
-                    .bindPopup(`<b>Position actuelle:</b><br>Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}<br>Timestamp: ${timestamp}`)
+                    .bindPopup(`<b>ID :</b> ${id}<br><b>Coordonnées :</b><br>Latitude : ${latitude.toFixed(5)}, Longitude : ${longitude.toFixed(5)}`)
                     .openPopup();
 
                 // Recentre la carte sur le marqueur
@@ -119,7 +104,7 @@
 
         // Initialisation de la carte et du marqueur
         function initMap() {
-            map = L.map('map').setView([48.8566, 2.3522], 13); // Paris par défaut
+            map = L.map('map').setView([49.8790, 2.3008], 13);
 
             // Ajouter les tuiles OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -128,7 +113,7 @@
             }).addTo(map);
 
             // Ajouter un marqueur par défaut
-            marker = L.marker([48.8566, 2.3522]).addTo(map)
+            marker = L.marker([49.8790, 2.3008]).addTo(map)
                 .bindPopup('Chargement des données...')
                 .openPopup();
         }
