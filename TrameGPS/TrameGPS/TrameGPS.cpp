@@ -1,4 +1,5 @@
 #include "TrameGPS.h"
+#define __WIN__
 #include <QSqlDatabase>
 #include <QSqlQuery>
 
@@ -19,6 +20,17 @@ TrameGPS::TrameGPS(QWidget *parent)
 
 TrameGPS::~TrameGPS()
 {
+}
+
+void TrameGPS::connectToBdd()
+{
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setHostName("192.168.64.184");
+    db.setDatabaseName("TP2-CIEL2");
+    db.setUserName("tp2");
+    db.setPassword("tp2");
+    bool ok = db.open();
+    if (!ok) QMessageBox::critical(this, "Erreur BDD", QString("Erreur avec la BDD: " + db.lastError().text()));
 }
 
 void TrameGPS::sendToBdd(QString lattitude, QString longitude)

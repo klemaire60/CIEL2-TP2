@@ -5,6 +5,8 @@
 #include <qserialport.h> 
 #include <QSerialPortInfo>
 #include <QSqlDatabase>
+#include <QSqlError>
+#include <QMessageBox>
 
 class TrameGPS : public QMainWindow
 {
@@ -13,6 +15,8 @@ class TrameGPS : public QMainWindow
 public:
     TrameGPS(QWidget *parent = nullptr);
     ~TrameGPS();
+
+    void connectToBdd();
 
 private:
     Ui::TrameGPSClass ui;
