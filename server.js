@@ -1,42 +1,40 @@
 const express = require('express');
-const mysql = require('mysql2');
+const path = require('path');
+const mysql = require('mysql');
 const app = express();
-const port = 3000;
 
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'root',
-  database: 'TP2-CIEL2'
+const db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: 'root',
+    database: 'TP2-CIEL2'
 });
 
-// Middleware pour servir les fichiers statiques
-app.use(express.static('/var/www/html/CIEL2-TP2'));
+db.connect((err) => {
+    if (err) throw err;
+    console.log('Connecte a la base de donnees!');
+});
 
-// Route pour récupérer les trames GPS depuis la base de données
+app.use(express.static(path.join('/var/www/html/CIEL2-TP2')));
+
+app.get('/', (req, res) => {
+    res.sendFile(path.join('/var/www/html/CIEL2-TP2', 'index.html'));
+});
+
 app.get('/api/gps', (req, res) => {
-  const query = 'SELECT id, latitude, longitude FROM gps ORDER BY id DESC LIMIT 1';
-
-  connection.query(query, (err, results) => {
-    if (err) {
-      console.error('Erreur lors de la récupération des données GPS:', err);
-      res.status(500).send('Erreur serveur');
-      return;
-    }
-
-    if (results.length > 0) {
-      const gpsData = {
-        id: results[0].id,
-        latitude: results[0].latitude,
-        longitude: results[0].longitude,
-      };
-      res.json(gpsData);
-    } else {
-      res.status(404).send('Aucune donnée GPS trouvée');
-    }
-  });
+    db.query('SELECT latitude, longitude FROM gps ORDER BY id DESC LIMIT 1', (err, result) => {
+        if (err) {
+            res.status(500).send('Erreur de recuperation des donnees GPS');
+        } else {
+            const gpsData = result[0];
+            res.json({
+                latitude: gpsData.latitude,
+                longitude: gpsData.longitude
+            });
+        }
+    });
 });
 
-app.listen(port, () => {
-  console.log(`Serveur Node.js lancé sur http://192.168.64.184:${port}`);
+app.listen(3000, () => {
+    console.log('Serveur Node.js en ecoute sur http://192.168.64.184:3000');
 });

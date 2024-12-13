@@ -70,60 +70,55 @@
     <script>
         let map;
         let marker;
+        let socket;
 
-        // Fonction pour récupérer les données GPS depuis le serveur
-        async function fetchGPSData() {
-            try {
-                const response = await fetch('/api/gps');
-                if (!response.ok) {
-                    throw new Error('Erreur lors de la récupération des données GPS');
-                }
-                return await response.json();
-            } catch (error) {
-                console.error(error);
-                return null;
-            }
-        }
-
-        // Fonction pour mettre à jour le marqueur avec les nouvelles coordonnées GPS
-        async function updateMarker() {
-            const gpsData = await fetchGPSData();
-
-            if (gpsData) {
-                const { id, latitude, longitude } = gpsData;
-
-                // Met à jour la position et le popup du marqueur
-                marker.setLatLng([latitude, longitude])
-                    .bindPopup(`<b>ID :</b> ${id}<br><b>Coordonnées :</b><br>Latitude : ${latitude.toFixed(5)}, Longitude : ${longitude.toFixed(5)}`)
-                    .openPopup();
-
-                // Recentre la carte sur le marqueur
-                map.setView([latitude, longitude]);
-            }
-        }
-
-        // Initialisation de la carte et du marqueur
         function initMap() {
             map = L.map('map').setView([49.8790, 2.3008], 13);
 
-            // Ajouter les tuiles OpenStreetMap
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
 
-            // Ajouter un marqueur par défaut
             marker = L.marker([49.8790, 2.3008]).addTo(map)
                 .bindPopup('Chargement des données...')
                 .openPopup();
         }
 
-        // Charger la carte et commencer les mises à jour
+        function updateMarker(latitude, longitude) {
+            marker.setLatLng([latitude, longitude])
+                .bindPopup(`<b>Coordonnées :</b><br>Latitude : ${latitude.toFixed(5)}, Longitude : ${longitude.toFixed(5)}`)
+                .openPopup();
+
+            map.setView([latitude, longitude]);
+        }
+
+        function connectWebSocket() {
+            socket = new WebSocket('ws://localhost:8080');
+
+            socket.onopen = function() {
+                console.log('Connexion WebSocket réussie');
+            };
+
+            socket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                const { latitude, longitude } = data;
+
+                updateMarker(latitude, longitude);
+            };
+
+            socket.onerror = function(error) {
+                console.error('Erreur WebSocket:', error);
+            };
+
+            socket.onclose = function() {
+                console.log('Connexion WebSocket fermée');
+            };
+        }
+
         window.onload = () => {
             initMap();
-
-            // Met à jour la position toutes les 2 secondes
-            setInterval(updateMarker, 2000);
+            connectWebSocket();
         };
     </script>
 </body>

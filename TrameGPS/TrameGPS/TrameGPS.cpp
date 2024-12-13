@@ -1,121 +1,155 @@
 #include "TrameGPS.h"
-#define __WIN__
-#include <QSqlDatabase>
+#include <QSerialPort>
+#include <QSerialPortInfo>
 #include <QSqlQuery>
+#include <QDebug>
 
-TrameGPS::TrameGPS(QWidget *parent)
+TrameGPS::TrameGPS(QWidget* parent)
     : QMainWindow(parent)
 {
     ui.setupUi(this);
     buffer.clear();
 
-    QList<QSerialPortInfo> availablePorts = QSerialPortInfo::availablePorts();
-
-    for (int i = 0; i < availablePorts.size(); i++)
-    {
-        QSerialPortInfo info = availablePorts[i];
-        ui.portChoiceComboBox->addItem(info.portName(), QVariant(info.portName()));
-    }
+    // Remplir la liste des ports disponibles
+    updatePortList();
 }
 
 TrameGPS::~TrameGPS()
 {
+    if (port && port->isOpen()) {
+        port->close();
+    }
 }
 
-void TrameGPS::connectToBdd()
+void TrameGPS::updatePortList()
 {
-    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
-    db.setHostName("192.168.64.184");
-    db.setDatabaseName("TP2-CIEL2");
-    db.setUserName("tp2");
-    db.setPassword("tp2");
-    bool ok = db.open();
-    if (!ok) QMessageBox::critical(this, "Erreur BDD", QString("Erreur avec la BDD: " + db.lastError().text()));
-}
+    // Effacer la liste existante
+    ui.portChoiceComboBox->clear();
 
-void TrameGPS::sendToBdd(QString lattitude, QString longitude)
-{
-    QSqlQuery query;
-    query.prepare("INSERT INTO gps (latitude, longitude) " "VALUES (:latitude, :longitude)");
-    query.bindValue(":latitude", lattitude.toDouble());
-    query.bindValue(":longitude", longitude.toDouble());
-    query.exec();
-}
+    // Récupérer les informations sur les ports série disponibles
+    QList<QSerialPortInfo> serialPortInfos = QSerialPortInfo::availablePorts();
+    for (const QSerialPortInfo& info : serialPortInfos) {
+        // Ajouter chaque port série à la liste déroulante
+        ui.portChoiceComboBox->addItem(info.portName());
+    }
 
-void TrameGPS::setupDatabase() {
-    this->db = QSqlDatabase::addDatabase("QMYSQL");
-    this->db.setHostName("192.168.64.184");
-    this->db.setDatabaseName("TP2-CIEL2");
-    this->db.setUserName("root");
-    this->db.setPassword("root");
-    if (!this->db.open()) {
-        qDebug("Erreur avec la BDD");
-    }
-    else {
-        qDebug("Connexion à la BDD réussie");
-    }
-}
-
-void TrameGPS::sendToBdd(const QString& latitude, const QString& longitude) {
-    QSqlQuery query;
-    query.prepare("INSERT INTO gps (latitude, longitude) VALUES (:latitude, :longitude)");
-    query.bindValue(":latitude", latitude.toDouble());
-    query.bindValue(":longitude", longitude.toDouble());
-    if (!query.exec()) {
-        qDebug("Erreur lors de l'insertion dans la BDD");
-        //qDebug() << query.lastError().text();
-    }
-    else {
-        qDebug("Données insérées avec succès dans la BDD");
+    // Si aucun port série n'est disponible, afficher un message
+    if (ui.portChoiceComboBox->count() == 0) {
+        ui.portChoiceComboBox->addItem("Aucun port serie disponible");
     }
 }
 
 void TrameGPS::onOpenPortButtonClicked()
 {
     qDebug("ok");
-    if (ui.portChoiceComboBox->currentIndex() >= 0)
-    {
-        port = new QSerialPort(ui.portChoiceComboBox->currentText());
-        QObject::connect(port, SIGNAL(readyRead()), this, SLOT(onSerialPortReadyRead()));
-        port->setBaudRate(9600);
-        port->setDataBits(QSerialPort::DataBits::Data8);
-        port->setParity(QSerialPort::Parity::NoParity);
-        port->setStopBits(QSerialPort::StopBits::OneStop);
-        if (port->open(QIODevice::OpenModeFlag::ExistingOnly | QIODevice::OpenModeFlag::ReadWrite));
-        {
-            ui.portStatusLabel->setText("Statut port: Ouvert");
+
+    // Vérifier si un port est sélectionné et s'il est valide
+    QString selectedPort = ui.portChoiceComboBox->currentText();
+
+    if (selectedPort.isEmpty() || selectedPort == "Aucun port serie disponible") {
+        ui.portStatusLabel->setText("Veuillez selectionner un port");
+        return;
+    }
+
+    // Créer un objet QSerialPort avec le port sélectionné
+    port = new QSerialPort(selectedPort, this);
+    QObject::connect(port, &QSerialPort::readyRead, this, &TrameGPS::onSerialPortReadyRead);
+
+    // Configurer le port série
+    port->setBaudRate(QSerialPort::Baud9600);
+    port->setDataBits(QSerialPort::Data8);
+    port->setParity(QSerialPort::NoParity);
+    port->setStopBits(QSerialPort::OneStop);
+    port->setFlowControl(QSerialPort::NoFlowControl);
+
+    // Ouvrir le port série en lecture et écriture
+    if (port->open(QIODevice::ReadWrite)) {
+        ui.portStatusLabel->setText("Port ouvert avec succes");
+    }
+    else {
+        ui.portStatusLabel->setText("Erreur d'ouverture du port");
+        qDebug() << "Erreur d'ouverture du port : " << port->errorString();
+    }
+}
+
+
+void TrameGPS::onSerialPortReadyRead()
+{
+    QByteArray data = port->readAll();  // Utilisez le bon objet 'port' ici
+    QString trame = QString::fromUtf8(data);
+
+    // Debugging: Log trame brute pour vérifier
+    qDebug() << "Trame brute : " << trame;
+
+    // Vérifier si la trame contient "$GPGGA", qui est la trame GPS de position
+    if (trame.contains("$GPGGA")) {
+        QStringList trameDecoupe = trame.split(',');
+
+        // Vérification si la trame contient assez de données
+        if (trameDecoupe.size() > 5) {
+            // Extraction de la latitude (au format NMEA, par exemple : 4855.1234)
+            QString latitudeBrute = trameDecoupe[2];
+            // Extraction de la longitude (au format NMEA, par exemple : 02326.5678)
+            QString longitudeBrute = trameDecoupe[4];
+
+            // Debugging: Log des données extraites
+            qDebug() << "Latitude brute : " << latitudeBrute;
+            qDebug() << "Longitude brute : " << longitudeBrute;
+
+            // Conversion des valeurs de latitude et longitude en format décimal
+            double latitude = convertNMEA(latitudeBrute);
+            double longitude = convertNMEA(longitudeBrute);
+
+            // Debugging: Log des données converties
+            qDebug() << "Latitude convertie : " << latitude;
+            qDebug() << "Longitude convertie : " << longitude;
+
+            // Envoi des données converties dans la base de données
+            sendToBdd(QString::number(latitude), QString::number(longitude));
+        }
+        else {
+            qDebug() << "Trame invalide ou incomplète.";
         }
     }
 }
 
-void TrameGPS::onSerialPortReadyRead() {
-    QByteArray data = port->readAll();
-    buffer.append(data);
-    qDebug(("Data received: " + QString(buffer)).toStdString().c_str());
+double TrameGPS::convertNMEA(const QString& nmea)
+{
+    if (nmea.isEmpty()) return 0.0;
 
-    int startIndex = buffer.indexOf("$GPGGA");
-    int endIndex = buffer.indexOf("*", startIndex + 1);
+    // Conversion des coordonnées NMEA (latitude/longitude)
+    double degrees = nmea.left(2).toDouble();
+    double minutes = nmea.mid(2).toDouble();
+    return degrees + (minutes / 60.0);
+}
 
-    while (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
-        QString trame = buffer.mid(startIndex, endIndex - startIndex + 1);
-        //qDebug(("Trame extracted: " + trame).toStdString().c_str());
+void TrameGPS::sendToBdd(const QString& latitude, const QString& longitude)
+{
+    if (db.isOpen()) {
+        QSqlQuery query;
+        query.prepare("INSERT INTO gps_data (latitude, longitude) VALUES (?, ?)");
+        query.addBindValue(latitude);
+        query.addBindValue(longitude);
 
-        QStringList trameDecoupe = trame.split(",");
-        if (trameDecoupe.size() >= 15) {
-            QString latitude = trameDecoupe[2];
-            QString longitude = trameDecoupe[4].mid(2); // Remove the leading "00"
-            qDebug(("Latitude: " + latitude + " Longitude: " + longitude).toStdString().c_str());
-            // this->sendToBdd(latitude, longitude);
+        if (!query.exec()) {
+            qDebug() << "Erreur d'insertion dans la base de donnees: " << query.lastError();
         }
-        else {
-            qDebug("Invalid trame format");
-        }
+    }
+}
 
-        // Remove the processed trame from the buffer
-        buffer.remove(0, endIndex + 1);
+void TrameGPS::connectToBdd(const QString& host, int port, const QString& dbName, const QString& user, const QString& password)
+{
+    db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setHostName(host);
+    db.setPort(port);
+    db.setDatabaseName(dbName);
+    db.setUserName(user);
+    db.setPassword(password);
 
-        // Find the next trame
-        startIndex = buffer.indexOf("$GPGGA");
-        endIndex = buffer.indexOf("*", startIndex + 1);
+    if (!db.open()) {
+        QMessageBox::critical(this, "Erreur de connexion", "Impossible de se connecter a la base de donnees.");
+    }
+    else {
+        qDebug() << "Connexion a la base de donnees reussie!";
     }
 }
