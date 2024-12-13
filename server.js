@@ -28,8 +28,8 @@ app.get('/api/gps', (req, res) => {
         } else {
             const gpsData = result[0];
             res.json({
-                latitude: gpsData.latitude,
-                longitude: gpsData.longitude
+                latitude: gps.latitude,
+                longitude: gps.longitude
             });
         }
     });

@@ -72,7 +72,6 @@ void TrameGPS::onOpenPortButtonClicked()
     }
 }
 
-
 void TrameGPS::onSerialPortReadyRead()
 {
     QByteArray data = port->readAll();  // Utilisez le bon objet 'port' ici
@@ -108,7 +107,7 @@ void TrameGPS::onSerialPortReadyRead()
             sendToBdd(QString::number(latitude), QString::number(longitude));
         }
         else {
-            qDebug() << "Trame invalide ou incomplète.";
+            qDebug() << "Trame invalide ou incomplete.";
         }
     }
 }
@@ -123,24 +122,6 @@ double TrameGPS::convertNMEA(const QString& nmea)
     return degrees + (minutes / 60.0);
 }
 
-void TrameGPS::sendToBdd(const QString& latitude, const QString& longitude)
-{
-    if (!db.isOpen()) {
-        qDebug() << "La connexion a la base de donnees n'est pas ouverte.";
-        return;
-    }
-
-    QSqlQuery query;
-    query.prepare("INSERT INTO gps_data (latitude, longitude) VALUES (?, ?)");
-    query.addBindValue(latitude);
-    query.addBindValue(longitude);
-
-    if (!query.exec()) {
-        qDebug() << "Erreur d'insertion dans la base de donnees: " << query.lastError();
-    }
-}
-
-
 void TrameGPS::connectToBdd(const QString& host, int port, const QString& dbName, const QString& user, const QString& password)
 {
     db = QSqlDatabase::addDatabase("QMYSQL");
@@ -151,9 +132,34 @@ void TrameGPS::connectToBdd(const QString& host, int port, const QString& dbName
     db.setPassword(password);
 
     if (!db.open()) {
+        qDebug() << "Erreur de connexion à la base de donnees : " << db.lastError().text();
         QMessageBox::critical(this, "Erreur de connexion", "Impossible de se connecter a la base de donnees.");
     }
     else {
         qDebug() << "Connexion a la base de donnees reussie!";
+    }
+}
+
+void TrameGPS::sendToBdd(const QString& latitude, const QString& longitude)
+{
+    qDebug() << "Latitude a inserer : " << latitude;
+    qDebug() << "Longitude a inserer : " << longitude;
+
+    if (db.isOpen()) {
+        QSqlQuery query;
+        query.prepare("INSERT INTO gps (latitude, longitude) VALUES (?, ?)");
+        query.addBindValue(latitude);
+        query.addBindValue(longitude);
+
+        if (!query.exec()) {
+            qDebug() << "Erreur d'insertion dans la base de donnees : " << query.lastError().text();
+        }
+        else {
+            qDebug() << "Insertion reussie dans la base de donnees.";
+            qDebug() << "SQL : " << query.executedQuery(); // Afficher la requête SQL exécutée
+        }
+    }
+    else {
+        qDebug() << "La base de donnees n'est pas ouverte.";
     }
 }
