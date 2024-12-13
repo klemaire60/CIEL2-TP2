@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     w.show();
 
     // Connexion à la base de données après que l'interface soit affichée
-    w.connectToBdd("localhost", 3000, "TP2-CIEL2", "root", "root");
+    w.connectToBdd("192.168.64.184", 3306, "TP2-CIEL2", "site", "site");
 
     return a.exec();
 }

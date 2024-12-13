@@ -125,17 +125,21 @@ double TrameGPS::convertNMEA(const QString& nmea)
 
 void TrameGPS::sendToBdd(const QString& latitude, const QString& longitude)
 {
-    if (db.isOpen()) {
-        QSqlQuery query;
-        query.prepare("INSERT INTO gps_data (latitude, longitude) VALUES (?, ?)");
-        query.addBindValue(latitude);
-        query.addBindValue(longitude);
+    if (!db.isOpen()) {
+        qDebug() << "La connexion a la base de donnees n'est pas ouverte.";
+        return;
+    }
 
-        if (!query.exec()) {
-            qDebug() << "Erreur d'insertion dans la base de donnees: " << query.lastError();
-        }
+    QSqlQuery query;
+    query.prepare("INSERT INTO gps_data (latitude, longitude) VALUES (?, ?)");
+    query.addBindValue(latitude);
+    query.addBindValue(longitude);
+
+    if (!query.exec()) {
+        qDebug() << "Erreur d'insertion dans la base de donnees: " << query.lastError();
     }
 }
+
 
 void TrameGPS::connectToBdd(const QString& host, int port, const QString& dbName, const QString& user, const QString& password)
 {
