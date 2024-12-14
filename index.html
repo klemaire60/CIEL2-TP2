@@ -70,56 +70,48 @@
     <script>
         let map;
         let marker;
-        let socket;
-
+    
+        async function fetchGPSData() {
+            try {
+                const response = await fetch('/api/gps');
+                if (!response.ok) {
+                    throw new Error('Erreur lors de la récupération des données GPS');
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données GPS :', error);
+                return null;
+            }
+        }
+    
+        async function updateMarker() {
+            const gpsData = await fetchGPSData();
+            if (gpsData) {
+                const { id, latitude, longitude } = gpsData;
+                marker.setLatLng([latitude, longitude])
+                    .bindPopup(`<b>ID :</b> ${id}<br><b>Coordonnées :</b><br>Latitude : ${latitude.toFixed(5)}, Longitude : ${longitude.toFixed(5)}`)
+                    .openPopup();
+                map.setView([latitude, longitude]);
+            }
+        }
+    
         function initMap() {
             map = L.map('map').setView([49.8790, 2.3008], 13);
-
+    
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors',
                 maxZoom: 19
             }).addTo(map);
-
+    
             marker = L.marker([49.8790, 2.3008]).addTo(map)
                 .bindPopup('Chargement des données...')
                 .openPopup();
         }
-
-        function updateMarker(latitude, longitude) {
-            marker.setLatLng([latitude, longitude])
-                .bindPopup(`<b>Coordonnées :</b><br>Latitude : ${latitude.toFixed(5)}, Longitude : ${longitude.toFixed(5)}`)
-                .openPopup();
-
-            map.setView([latitude, longitude]);
-        }
-
-        function connectWebSocket() {
-            socket = new WebSocket('ws://localhost:8080');
-
-            socket.onopen = function() {
-                console.log('Connexion WebSocket réussie');
-            };
-
-            socket.onmessage = function(event) {
-                const data = JSON.parse(event.data);
-                const { latitude, longitude } = data;
-
-                updateMarker(latitude, longitude);
-            };
-
-            socket.onerror = function(error) {
-                console.error('Erreur WebSocket:', error);
-            };
-
-            socket.onclose = function() {
-                console.log('Connexion WebSocket fermée');
-            };
-        }
-
+    
         window.onload = () => {
             initMap();
-            connectWebSocket();
+            setInterval(updateMarker, 2000);
         };
-    </script>
+    </script>    
 </body>
 </html>

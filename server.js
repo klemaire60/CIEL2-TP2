@@ -1,40 +1,47 @@
-const express = require('express');
-const path = require('path');
 const mysql = require('mysql');
+const express = require('express');
 const app = express();
+const port = 3000;
 
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'root',
+const connection = mysql.createConnection({
+    host: '192.168.64.184',
+    user: 'site',
+    password: 'site',
     database: 'TP2-CIEL2'
 });
 
-db.connect((err) => {
-    if (err) throw err;
-    console.log('Connecte a la base de donnees!');
+connection.connect(err => {
+    if (err) {
+        console.error('Erreur de connexion à la base de données:', err);
+        return;
+    }
+    console.log('Connected to the database!');
 });
 
-app.use(express.static(path.join('/var/www/html/CIEL2-TP2')));
+app.use(express.static('/var/www/html/CIEL2-TP2'));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join('/var/www/html/CIEL2-TP2', 'index.html'));
+    res.sendFile('/var/www/html/CIEL2-TP2/index.html');
 });
 
 app.get('/api/gps', (req, res) => {
-    db.query('SELECT latitude, longitude FROM gps ORDER BY id DESC LIMIT 1', (err, result) => {
+    connection.query('SELECT latitude, longitude FROM gps ORDER BY id DESC LIMIT 1', (err, results) => {
         if (err) {
-            res.status(500).send('Erreur de recuperation des donnees GPS');
-        } else {
-            const gpsData = result[0];
-            res.json({
-                latitude: gps.latitude,
-                longitude: gps.longitude
-            });
+            console.error('Erreur SQL :', err);
+            return res.status(500).send('Erreur lors de la récupération des données GPS.');
         }
+
+        console.log('Résultat SQL :', results);
+
+        if (!results || results.length === 0) {
+            return res.status(404).send('Aucune donnée GPS trouvée.');
+        }
+
+        const { latitude, longitude } = results[0];
+        res.json({ latitude, longitude });
     });
 });
 
-app.listen(3000, () => {
-    console.log('Serveur Node.js en ecoute sur http://192.168.64.184:3000');
+app.listen(port, () => {
+    console.log(`Server running on http://192.168.64.184:${port}`);
 });
